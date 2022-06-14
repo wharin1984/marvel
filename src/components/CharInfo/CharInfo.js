@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {Row, Col, ListGroup, Image, Button} from 'react-bootstrap';
 import useMarvelService from '../../services/MarvelService';
-import Spinners from '../spinner/Spinner';
-import ErrorMessage from '../errorMessage/ErrorMessage';
-import Skeleton from '../skeleton/Skeleton'
+import setContent from '../../utils/setContent';
 
 const CharInfo = (props) => {
     const [char, setChar] = useState(null);
     
-    const {loading, error, getCharacter, clearError} = useMarvelService();
+    const {getCharacter, clearError, process, setProcess} = useMarvelService();
 
     useEffect(() => {
         updateChar()
@@ -24,33 +22,28 @@ const CharInfo = (props) => {
         }
         clearError();
         getCharacter(charId)
-            .then(onCharLoader);
+            .then(onCharLoader)
+            .then(() => setProcess('confirmed'));
     }
 
     const onCharLoader = (char) => {
         setChar(char);
     }
 
-    const skeleton = char || loading || error ? null : <Skeleton/>;
-    const errorMessage = error ? <ErrorMessage/> : null;
-    const spinner = loading ? <Spinners/> : null;
-    const content = !(loading || error || !char) ? <View char={char}/> : null;
+    
 
     return (
         <>
         <div className='shadow h-100 p-3 bg-light bg-gradient border rounded-3 mb-lg-5 mb-3'>
-            {skeleton}
-            {errorMessage}
-            {spinner}
-            {content}
+            {setContent(process, View, char)}
         </div>
         </>
     );
     
 }
 
-const View = ({char}) => {
-    const {name, description, thumbnail, homepage, wiki, comics} = char;
+const View = ({data}) => {
+    const {name, description, thumbnail, homepage, wiki, comics} = data;
     let imgStyle = {'objectFit' : 'cover'};
     if (thumbnail === 'http://i.annihil.us/u/prod/marvel/i/mg/b/40/image_not_available.jpg') {
         imgStyle = {'objectFit' : 'unset'};

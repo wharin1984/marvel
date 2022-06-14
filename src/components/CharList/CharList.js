@@ -1,10 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {CSSTransition, TransitionGroup} from 'react-transition-group';
 import {Row, Col, Card, Button} from 'react-bootstrap';
 import useMarvelService from '../../services/MarvelService';
 import Spinners from '../spinner/Spinner';
 import ErrorMessage from '../errorMessage/ErrorMessage';
+
+const setContent = (process, Component, newItemLoading) => {
+    switch (process) {
+        case 'waiting':
+            return <Spinners/>;
+        case 'error':
+            return <ErrorMessage/>;
+        case 'loading':
+            return newItemLoading ? <Component/> : <Spinners/>;
+        case 'confirmed':
+            return <Component/>;
+        default:
+            throw new Error ('Unexpected process state');
+    }
+}
 
 const CharList = (props) => {
     const [charList, setCharList] = useState([]);
@@ -13,7 +28,7 @@ const CharList = (props) => {
     const [charEnded, setCharEnded] = useState(false);
     
     
-    const {loading, error, getAllCharacters} = useMarvelService();
+    const {getAllCharacters, process, setProcess} = useMarvelService();
 
     useEffect(() => {
         onRequest(offset, true);
@@ -22,7 +37,8 @@ const CharList = (props) => {
     const onRequest = (offset, initial) => {
         initial ? setNewItemLoading(false) : setNewItemLoading(true);
         getAllCharacters(offset)
-            .then(onCharListLoaded);
+            .then(onCharListLoaded)
+            .then(() => setProcess('confirmed'));
     }
 
     const onCharListLoaded = (newCharList) => {
@@ -52,7 +68,7 @@ const CharList = (props) => {
                 imgStyle = {'objectFit' : 'unset'};
             }
             return (
-                <CSSTransition key={item.id} timeout={500} classNames="char__item">
+                <CSSTransition  timeout={500} classNames="char__item" key={item.id}>
                     <Col xs={12} md={6} lg={4}>
                         <Card className='shadow bg-dark text-white item-card' ref={el => itemRefs.current[i] = el} >
                             <Card.Img variant="top" src={item.thumbnail} alt={item.name} style={imgStyle} width={268} height={268}/>
@@ -79,16 +95,12 @@ const CharList = (props) => {
             <TransitionGroup component={null}>{items}</TransitionGroup>
         )
     }
-
-    const items = renderItems(charList);
-
-    const errorMessage = error ? <ErrorMessage/> : null;
-    const spinner = loading && !newItemLoading ? <Spinners/> : null;
+    const elements = useMemo(() => {
+        return setContent(process, () => renderItems(charList), newItemLoading);
+    }, [process])
     return(
         <Row>
-            {errorMessage}
-            {spinner}
-            {items}
+            {elements}
             <Col xs={12} className='text-center mt-5'>
                 <Button 
                     variant="btn-bd-primary rounded-0"
